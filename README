@@ -1,0 +1,11 @@
+SYnchronized NEtwork Player is a simple application that let you start some
+video players, a master and some slaves, synchronized over a network using
+gst.NetTimeProvider / gst.NetClientClock. The synchronization code is taken
+from some examples by Andy Wingo (thanks Andy!). The videos will continue to
+play in loop.
+
+The player is a basic decodebin / autovideosink based pipeline, no audio support
+is provided but it's easy to add it.
+
+SYNEPlayer is designed to survive the death of one of his component, even if the
+master dies, the clients are meant to re-synchronize when it comes up again.

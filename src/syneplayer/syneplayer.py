@@ -31,13 +31,17 @@ from playerwindow import PlayerWindow
 import gtk
 
 class Player(object):
+    """
+        This is a simple pipeline for a video player based on decodebin/autovideosink.
+        This pipeline will loop the video file.
+    """
     def __init__(self, filepath, window=None):
         if window is None:
             self.window=PlayerWindow()
         else:
             self.window=window
     
-        self.prerolling=True
+        #build the pipeline
         self.pipeline=self.get_pipeline(filepath)
         self.bus=self.pipeline.get_bus()
         self.bus.add_signal_watch()
@@ -47,8 +51,11 @@ class Player(object):
            self.on_sync_message)
 
         self.pipeline.set_state(gst.STATE_PAUSED)
+        #after setting to STATE_PAUSED the player is prerolling
+        self.prerolling=True
         
     def key_press_handler(self, widget, event):
+        """F key handler for fullscreen"""
         if event.keyval==102:
             if self.fullscreen:
                 widget.unfullscreen()
@@ -58,11 +65,12 @@ class Player(object):
                 self.fullscreen=True
                 
     def get_pipeline(self, filepath):
-        return gst.parse_launch('filesrc location={0} ! oggdemux ! '.format(filepath) +
-                            'theoradec ! ffmpegcolorspace ! '
-                            'videoscale ! xvimagesink')
+        """A basic decodebin/autovideosink pipeline with no audio support"""
+        return gst.parse_launch('filesrc location={0} ! '.format(filepath) +
+                            'decodebin ! autovideosink')
     
     def on_sync_message(self, bus, message):
+        """Whe handle sync messages to put the video in a GTK DrawingArea"""
         if message.structure is None:
             return
         message_name = message.structure.get_name()
@@ -76,23 +84,34 @@ class Player(object):
         
     
     def on_message(self, bus, message):
+        """Messages Handler"""
         t = message.type
         if t == gst.MESSAGE_SEGMENT_DONE:
+            #When segment is done, we seek the video to t=0
             self.pipeline.seek_simple(gst.FORMAT_TIME, gst.SEEK_FLAG_SEGMENT, 0)
         elif t == gst.MESSAGE_ERROR:
             err, debug = message.parse_error()
             print "Error: %s" % err, debug
         elif t == gst.MESSAGE_ASYNC_DONE:
             if self.prerolling:
+                """
+                    When the MESSAGE_ASYNC_DONE is emitted first time, prerolling is done. Then we seek to t=0
+                    to enable SEGMENT_DONE message emission.
+                """
                 self.pipeline.seek_simple(gst.FORMAT_TIME, gst.SEEK_FLAG_FLUSH | gst.SEEK_FLAG_SEGMENT, 0)
                 self.pipeline.set_state(gst.STATE_PLAYING)
                 #prerolling is done!
                 self.prerolling=False
     
     def stop(self):
+        """Stop the player"""
         self.pipeline.set_state(gst.STATE_NULL)
         
 class MasterPlayer(Player):
+    """
+        This class extends the basic Player creating a gst.NetTimeProvider to be
+        used by the slaves. Code here is taken from Andy Wingo examples.
+    """
     def __init__(self, filepath, port, window=None):
         super(MasterPlayer, self).__init__(filepath, window)
         
@@ -107,6 +126,11 @@ class MasterPlayer(Player):
         return self.base_time
         
 class SlavePlayer(Player):
+    """
+        This class extends the basic player creating making it use a gst.NetClientClock
+        and setting a base_time taken from the Master. This creates a SlavePlayer that
+        is synchronized with the MasterPlayer.
+    """
     def __init__(self, filepath, ip, port, base_time, window=None):
         super(SlavePlayer, self).__init__(filepath, window)
         self.ip=ip
@@ -117,6 +141,7 @@ class SlavePlayer(Player):
         return self.pipeline.get_base_time()
         
     def set_clock(self, base_time):
+        #Code here is taken from Andy Wingo examples.
         self.pipeline.set_new_stream_time(gst.CLOCK_TIME_NONE)
         self.base_time=base_time
         self.clock = gst.NetClientClock(None, self.ip, self.port, base_time)
@@ -124,6 +149,9 @@ class SlavePlayer(Player):
         self.pipeline.use_clock(self.clock)
    
 if __name__ == '__main__':
+    """
+        This is a simple main meant to test the behaviour of SlavePlayer and MasterPlayer
+    """
     if sys.argv[1]=='test':
         master=MasterPlayer(20000)
         slave=SlavePlayer('127.0.0.1', 20000, master.base_time)
