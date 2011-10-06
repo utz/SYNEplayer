@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Copyright (C) 2011 by Riccardo Cagnasso, Paolo Podesta'
 
@@ -20,13 +21,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-#!/usr/bin/env python
-
 import threading
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import xmlrpclib
 import sys
 import time
+import argparse
 
 from syneplayer import *
 
@@ -41,25 +41,28 @@ class requestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths=('/RPC2',)
        
 class MasterServerThread(threading.Thread):
-    def __init__(self, master_server):
+    def __init__(self, master_server, ip, rpcport):
         super(MasterServerThread, self).__init__()
         self.master_server=master_server
+        self.rpcport=rpcport
+        self.ip=ip
         
         
     def run(self):
-        server=SimpleXMLRPCServer(("localhost", 8000),
+        self.server=SimpleXMLRPCServer(('', self.rpcport),
             requestHandler=requestHandler, allow_none=True)
             
-        server.register_introspection_functions()
-        server.register_instance(self.master_server)
-        print 'foo'
-        server.serve_forever()
+        self.server.register_introspection_functions()
+        self.server.register_instance(self.master_server)
+        self.server.serve_forever()
 
 class SlaveControllerThread(threading.Thread):
-    def __init__(self, ip, port):
+    def __init__(self, filepath, ip, port, rpcport):
         super(SlaveControllerThread, self).__init__()
+        self.filepath=filepath
         self.ip=ip
         self.port=port
+        self.rpcport=rpcport
         
         self.master_server=None
         self.slave=None
@@ -68,7 +71,7 @@ class SlaveControllerThread(threading.Thread):
         while True:
             while self.master_server is None:
                 try:
-                    self.master_server=xmlrpclib.ServerProxy('http://localhost:8000')
+                    self.master_server=xmlrpclib.ServerProxy('http://{0}:{1}'.format(self.ip, self.rpcport))
                 except Exception:
                     print "Master not ready"
                 time.sleep(1)
@@ -78,35 +81,54 @@ class SlaveControllerThread(threading.Thread):
             except Exception:
                 print "Master not responding"
             else:
-                print base_time
                 if self.slave is None:
-                    self.slave=SlavePlayer(self.ip, self.port, base_time)
+                    self.slave=SlavePlayer(self.filepath, self.ip, self.port, base_time)
                 elif base_time!=self.slave.get_base_time():
                     self.slave.stop()
-                    self.slave=SlavePlayer(self.ip, self.port, base_time)
+                    self.slave=SlavePlayer(self.filepath, self.ip, self.port, base_time, self.slave.window)
                     
             time.sleep(2)
-        
+    
+    def stop_player(self):
+        self.slave.stop()
 
-def master_main(port):
-    player=MasterPlayer(port)
+def master_main(filepath, ip, port, rpcport):
+    player=MasterPlayer(filepath, port)
     ms=MasterServer(player)
-    mst=MasterServerThread(ms)
+    mst=MasterServerThread(ms, ip, rpcport)
     mst.start()
     
     gtk.gdk.threads_init()
     gtk.main()
+    
+    mst.server.shutdown()
+    player.stop()
 
-def slave_main(ip, port):
-    sct=SlaveControllerThread(ip, port)
+def slave_main(filepath, ip, port, rpcport):
+    sct=SlaveControllerThread(filepath, ip, port, rpcport)
     sct.start()
     
     gtk.gdk.threads_init()
     gtk.main()
     
+    sct.stop_player()
+    
 if __name__ == '__main__':
-    if sys.argv[1]=='master':
-        master_main(20000)
-    elif sys.argv[1]=='slave':
-        slave_main('127.0.0.1', 20000)
+    parser = argparse.ArgumentParser(prog='syneplayer', description='Start a syneplayer master or server')
+    parser.add_argument('-c', '--clock-port', type=int, default=20000,
+                       help='Specify the port for the netclock')
+    parser.add_argument('-r', '--rpc-port', type=int, default=8000,
+                       help='Specify the port for the xmlrpcserver')                       
+    parser.add_argument('-i', '--master-ip', type=str, default='127.0.0.1',
+                       help='Specify the ip of the master server for the slave to connect')
+    parser.add_argument('-f', '--file', type=str, required=True,
+                        help='Specify the full path of the file to be played')
+    parser.add_argument('type', choices=['master', 'slave'],
+                       help="Specify if launch the master or the slave")
+
+    
+    if args.type=='master':
+        master_main(args.file, args.master_ip, args.clock_port, args.rpc_port)
+    elif args.type=='slave':
+        slave_main(args.file, args.master_ip, args.clock_port, args.rpc_port)
         
