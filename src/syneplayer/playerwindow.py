@@ -31,14 +31,13 @@ class PlayerWindow(object):
         window.connect("destroy", gtk.main_quit, "WM destroy")
         self.movie_window=gtk.DrawingArea()
         window.add(self.movie_window)
-        window.show_all()
         self.fullscreen=True
         window.fullscreen()
         window.connect("key_press_event", self.key_press_handler)
+        window.show_all()
         
     def key_press_handler(self, widget, event):
         if event.keyval==102:
-            print self.fullscreen
             if self.fullscreen:
                 widget.unfullscreen()
                 self.fullscreen=False
