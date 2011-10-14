@@ -91,15 +91,16 @@ class SlaveControllerThread(threading.Thread):
         
         self.master_server=None
         self.slave=None
+        self.running=True
         
     def run(self):
-        while True:
+        while self.running:
             while self.master_server is None:
                 try:
                     self.master_server=xmlrpclib.ServerProxy('http://{0}:{1}'.format(self.ip, self.rpcport))
                 except Exception:
                     print "Master not ready"
-                time.sleep(5)
+                    time.sleep(5)
         
             try:
                 base_time=long(self.master_server.get_base_time())
@@ -117,6 +118,7 @@ class SlaveControllerThread(threading.Thread):
     
     def stop_player(self):
         self.slave.stop()
+        self.running=False
 
 def master_main(filepath, ip, port, rpcport):
     """Launches a master"""
