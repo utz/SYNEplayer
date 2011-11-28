@@ -114,7 +114,7 @@ class SlaveControllerThread(threading.Thread):
                     self.slave.stop()
                     self.slave=SlavePlayer(self.filepath, self.ip, self.port, base_time, self.slave.window)
                     
-            time.sleep(10)
+                time.sleep(10)
     
     def stop_player(self):
         self.slave.stop()
