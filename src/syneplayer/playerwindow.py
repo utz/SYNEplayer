@@ -20,27 +20,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import pygtk, gtk, gobject
+import gtk
+
 
 class PlayerWindow(object):
-    """This is a very simple gtk window for the players to draw on. It supports fullscreen."""
+    """This is a very simple gtk window for the players to draw on.
+    It supports fullscreen."""
     def __init__(self):
         window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         window.set_title("SYNEPlayer")
         window.set_default_size(600, -1)
         window.connect("destroy", gtk.main_quit, "WM destroy")
-        self.movie_window=gtk.DrawingArea()
+        self.movie_window = gtk.DrawingArea()
         window.add(self.movie_window)
-        self.fullscreen=True
+        self.fullscreen = True
         window.fullscreen()
         window.connect("key_press_event", self.key_press_handler)
         window.show_all()
-        
+
     def key_press_handler(self, widget, event):
-        if event.keyval==102:
+        if event.keyval == 102:
             if self.fullscreen:
                 widget.unfullscreen()
-                self.fullscreen=False
+                self.fullscreen = False
             else:
                 widget.fullscreen()
-                self.fullscreen=True
+                self.fullscreen = True
