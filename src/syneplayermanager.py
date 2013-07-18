@@ -27,10 +27,10 @@ THE SOFTWARE.
     gst.NetTimeProvider / gst.NetClientClock. The synchronization code is taken
     from some examples by Andy Wingo (thanks Andy!). The videos will continue to
     play in loop.
-    
+
     The player is a basic decodebin / autovideosink based pipeline, no audio support
     is provided but it's easy to add it.
-    
+
     SYNEPlayer is designed to survive the death of one of his component, even if the
     master dies, the clients are meant to re-synchronize when it comes up again.
 """
@@ -38,7 +38,6 @@ THE SOFTWARE.
 import threading
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import xmlrpclib
-import sys
 import time
 import argparse
 
@@ -103,13 +102,13 @@ class SlaveControllerThread(threading.Thread):
                     self.master_server = xmlrpclib.ServerProxy('http://{0}:{1}'
                         .format(self.ip, self.rpcport))
                 except Exception:
-                    print "Master not ready"
+                    print("Master not ready")
                     time.sleep(5)
 
             try:
                 base_time = long(self.master_server.get_base_time())
             except Exception:
-                print "Master not responding"
+                print("Master not responding")
             else:
                 if self.slave is None:
                     self.slave = SlavePlayer(self.filepath, self.ip,
