@@ -36,7 +36,7 @@ THE SOFTWARE.
 """
 
 import threading
-from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import xmlrpclib
 import time
 import argparse

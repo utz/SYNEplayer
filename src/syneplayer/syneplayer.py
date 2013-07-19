@@ -23,11 +23,16 @@ THE SOFTWARE.
 
 import sys
 
-import pygst
-pygst.require('0.10')
-import gst
+import gi
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst, Gtk, GObject
+
+GObject.threads_init()
+Gst.init(None)
+
 from playerwindow import PlayerWindow
-import gtk
+
+from gi.repository import GdkX11, GstVideo
 
 
 class Player(object):
@@ -50,7 +55,7 @@ class Player(object):
         self.bus.connect("sync-message::element",
            self.on_sync_message)
 
-        self.pipeline.set_state(gst.STATE_PAUSED)
+        self.pipeline.set_state(Gst.State.PAUSED)
         #after setting to STATE_PAUSED the player is prerolling
         self.prerolling = True
 
@@ -66,46 +71,40 @@ class Player(object):
 
     def get_pipeline(self, filepath):
         """A basic decodebin/autovideosink pipeline with no audio support"""
-        return gst.parse_launch('filesrc location={0} ! '.format(filepath) +
-                            'decodebin ! autovideosink')
+        return Gst.parse_launch('filesrc location={0} ! '.format(filepath)\
+            + 'decodebin ! autovideosink')
 
     def on_sync_message(self, bus, message):
         """Whe handle sync messages to put the video in a GTK DrawingArea"""
-        if message.structure is None:
-            return
-        message_name = message.structure.get_name()
-        if message_name == "prepare-xwindow-id":
-            imagesink = message.src
-            #imagesink.set_property("force-aspect-ratio", True)
-            #imagesink.set_property('synchronous', True)
-            gtk.gdk.threads_enter()
-            imagesink.set_xwindow_id(self.window.movie_window.window.xid)
-            gtk.gdk.threads_leave()
+        if message.get_structure().get_name() == 'prepare-window-handle':
+            message.src.set_window_handle(self.window.movie_window
+                .get_property('window').get_xid())
 
     def on_message(self, bus, message):
         """Messages Handler"""
         t = message.type
-        if t == gst.MESSAGE_SEGMENT_DONE:
+        if t == Gst.MessageType.SEGMENT_DONE:
             #When segment is done, we seek the video to t=0
-            self.pipeline.seek_simple(gst.FORMAT_TIME, gst.SEEK_FLAG_SEGMENT, 0)
-        elif t == gst.MESSAGE_ERROR:
+            self.pipeline.seek_simple(Gst.FORMAT_TIME, Gst.SEEK_FLAG_SEGMENT, 0)
+        elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
-            print "Error: %s" % err, debug
-        elif t == gst.MESSAGE_ASYNC_DONE:
+            print("Error: %s" % err, debug)
+        elif t == Gst.MessageType.ASYNC_DONE:
             if self.prerolling:
                 """
                     When the MESSAGE_ASYNC_DONE is emitted first time,
                     prerolling is done. Then we seek to t=0 to enable
                     SEGMENT_DONE message emission.
                 """
-                self.pipeline.seek_simple(gst.FORMAT_TIME, gst.SEEK_FLAG_FLUSH | gst.SEEK_FLAG_SEGMENT, 0)
-                self.pipeline.set_state(gst.STATE_PLAYING)
+                self.pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH
+                    | Gst.SeekFlags.SEGMENT, 0)
+                self.pipeline.set_state(Gst.State.PLAYING)
                 #prerolling is done!
                 self.prerolling = False
 
     def stop(self):
         """Stop the player"""
-        self.pipeline.set_state(gst.STATE_NULL)
+        self.pipeline.set_state(Gst.State.NULL)
 
 
 class MasterPlayer(Player):
@@ -118,9 +117,9 @@ class MasterPlayer(Player):
 
         self.clock = self.pipeline.get_clock()
         self.pipeline.use_clock(self.clock)
-        self.clock_provider = gst.NetTimeProvider(self.clock, None, port)
+        self.clock_provider = Gst.NetTimeProvider(self.clock, None, port)
         self.base_time = self.clock.get_time()
-        self.pipeline.set_new_stream_time(gst.CLOCK_TIME_NONE)
+        self.pipeline.set_new_stream_time(Gst.CLOCK_TIME_NONE)
         self.pipeline.set_base_time(self.base_time)
 
     def get_base_time(self):
@@ -144,9 +143,9 @@ class SlavePlayer(Player):
 
     def set_clock(self, base_time):
         #Code here is taken from Andy Wingo examples.
-        self.pipeline.set_new_stream_time(gst.CLOCK_TIME_NONE)
+        self.pipeline.set_new_stream_time(Gst.CLOCK_TIME_NONE)
         self.base_time = base_time
-        self.clock = gst.NetClientClock(None, self.ip, self.port, base_time)
+        self.clock = Gst.NetClientClock(None, self.ip, self.port, base_time)
         self.pipeline.set_base_time(base_time)
         self.pipeline.use_clock(self.clock)
 
@@ -155,16 +154,17 @@ if __name__ == '__main__':
         This is a simple main meant to test the behaviour of SlavePlayer and MasterPlayer
     """
     if sys.argv[1] == 'test':
-        master = MasterPlayer(20000)
+        master = MasterPlayer('/home/phas/Downloads/A.ogg', 20000)
         slave = SlavePlayer('127.0.0.1', 20000, master.base_time)
         slave.pipeline.base_time = master.base_time
     elif sys.argv[1] == 'master':
         player = MasterPlayer(20000)
-        print "base_time={0}".format(player.base_time)
+        print("base_time={0}".format(player.base_time))
     elif sys.argv[1] == 'slave':
         slave = SlavePlayer(sys.argv[2], 20000, int(sys.argv[3]))
         slave.pipeline.base_time = int(sys.argv[3])
+    elif sys.argv[1] == 'base':
+        player = Player('/home/phas/Downloads/A.ogg')
 
-
-    gtk.gdk.threads_init()
-    gtk.main()
+    #Gtk.gdk.threads_init()
+    Gtk.main()

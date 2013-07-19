@@ -20,18 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import gtk
+from gi.repository import Gtk
 
 
 class PlayerWindow(object):
     """This is a very simple gtk window for the players to draw on.
     It supports fullscreen."""
     def __init__(self):
-        window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        window = Gtk.Window()
         window.set_title("SYNEPlayer")
         window.set_default_size(600, -1)
-        window.connect("destroy", gtk.main_quit, "WM destroy")
-        self.movie_window = gtk.DrawingArea()
+        window.connect("destroy", Gtk.main_quit, "WM destroy")
+        self.movie_window = Gtk.DrawingArea()
         window.add(self.movie_window)
         self.fullscreen = True
         window.fullscreen()
