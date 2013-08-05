@@ -30,7 +30,7 @@ from gi.repository import Gst, Gtk, GObject
 GObject.threads_init()
 Gst.init(None)
 
-from playerwindow import PlayerWindow
+from .playerwindow import PlayerWindow
 
 from gi.repository import GdkX11, GstVideo
 
