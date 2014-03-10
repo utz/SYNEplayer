@@ -37,9 +37,11 @@ THE SOFTWARE.
 
 import threading
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
-import xmlrpclib
+from xmlrpc.client import ServerProxy
 import time
 import argparse
+
+from gi.repository import Gtk, Gdk
 
 from syneplayer import *
 
@@ -68,8 +70,13 @@ class MasterServerThread(threading.Thread):
 
     def run(self):
         """Here we create the XMLRPCServer and put it to listen for requests"""
-        self.server = SimpleXMLRPCServer(('', self.rpcport),
+        self.server = SimpleXMLRPCServer(
+            ('', self.rpcport),
             requestHandler=requestHandler, allow_none=True)
+
+        server = SimpleXMLRPCServer(
+            ("127.0.0.1", 6669), requestHandler=requestHandler,
+            allow_none=True)
 
         self.server.register_introspection_functions()
         self.server.register_instance(self.master_server)
@@ -99,22 +106,22 @@ class SlaveControllerThread(threading.Thread):
         while self.running:
             while self.master_server is None:
                 try:
-                    self.master_server = xmlrpclib.ServerProxy('http://{0}:{1}'
+                    self.master_server = ServerProxy('http://{0}:{1}'
                         .format(self.ip, self.rpcport))
                 except Exception:
                     print("Master not ready")
                     time.sleep(5)
 
             try:
-                base_time = long(self.master_server.get_base_time())
-            except Exception:
+                base_time = int(self.master_server.get_base_time())
+            except Exception as e:
+                print(e)
                 print("Master not responding")
             else:
                 if self.slave is None:
                     self.slave = SlavePlayer(self.filepath, self.ip,
                         self.port, base_time)
                 elif base_time != self.slave.get_base_time():
-                    print("Base time changed, restarting slave")
                     self.slave.stop()
                     self.slave = SlavePlayer(self.filepath, self.ip, self.port,
                         base_time, self.slave.window)
@@ -133,8 +140,8 @@ def master_main(filepath, ip, port, rpcport):
     mst = MasterServerThread(ms, ip, rpcport)
     mst.start()
 
-    gtk.gdk.threads_init()
-    gtk.main()
+    Gdk.threads_init()
+    Gtk.main()
 
     mst.server.shutdown()
     player.stop()
@@ -145,8 +152,8 @@ def slave_main(filepath, ip, port, rpcport):
     sct = SlaveControllerThread(filepath, ip, port, rpcport)
     sct.start()
 
-    gtk.gdk.threads_init()
-    gtk.main()
+    #Gdk.threads_init()
+    Gtk.main()
 
     sct.stop_player()
 

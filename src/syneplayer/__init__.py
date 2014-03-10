@@ -1,2 +1,2 @@
-from .syneplayer import *
-from .playerwindow import *
+from .player import *
+from .window import *
