@@ -25,14 +25,15 @@ THE SOFTWARE.
     SYnchronized NEtwork Player is a simple application that let you start some
     video players, a master and some slaves, synchronized over a network using
     gst.NetTimeProvider / gst.NetClientClock. The synchronization code is taken
-    from some examples by Andy Wingo (thanks Andy!). The videos will continue to
-    play in loop.
+    from some examples by Andy Wingo (thanks Andy!). The videos will continue
+    to play in loop.
 
-    The player is a basic decodebin / autovideosink based pipeline, no audio support
-    is provided but it's easy to add it.
+    The player is a basic decodebin / autovideosink based pipeline, no audio
+    support is provided but it's easy to add it.
 
-    SYNEPlayer is designed to survive the death of one of his component, even if the
-    master dies, the clients are meant to re-synchronize when it comes up again.
+    SYNEPlayer is designed to survive the death of one of his component, even
+    if the master dies, the clients are meant to re-synchronize when it comes
+    up again.
 """
 
 import threading
@@ -41,13 +42,16 @@ from xmlrpc.client import ServerProxy
 import time
 import argparse
 
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GLib
 
 from syneplayer import *
 
 
 class MasterServer(object):
-    """This object contains method that will be made available from SimpleXMLRPCServer"""
+    """
+        This object contains method that will be made available
+        from SimpleXMLRPCServer
+    """
     def __init__(self, master_player):
         self.master_player = master_player
 
@@ -86,10 +90,11 @@ class MasterServerThread(threading.Thread):
 class SlaveControllerThread(threading.Thread):
     """
         This thread is in control of a SlavePlayer.
-        It waits for the base_time from the master and then it starts the server,
-        then it continues polling the master for changes in the base_time (e.g. if
-        the master reboot) in that case it kills the current player and starts a new
-        one (there should be a better way to do this...)
+        It waits for the base_time from the master and then it starts
+        the server, then it continues polling the master for changes in
+        the base_time (e.g. if the master reboot) in that case it kills the
+        current player and starts a new one (there should be a better way
+        to do this...)
     """
     def __init__(self, filepath, ip, port, rpcport):
         super(SlaveControllerThread, self).__init__()
@@ -120,11 +125,11 @@ class SlaveControllerThread(threading.Thread):
             else:
                 if self.slave is None:
                     self.slave = SlavePlayer(self.filepath, self.ip,
-                        self.port, base_time)
+                                             self.port, base_time)
                 elif base_time != self.slave.get_base_time():
                     self.slave.stop()
                     self.slave = SlavePlayer(self.filepath, self.ip, self.port,
-                        base_time, self.slave.window)
+                                             base_time, self.slave.window)
 
                 time.sleep(10)
 
@@ -141,6 +146,7 @@ def master_main(filepath, ip, port, rpcport):
     mst.start()
 
     Gdk.threads_init()
+    GLib.threads_init()
     Gtk.main()
 
     mst.server.shutdown()
@@ -152,23 +158,30 @@ def slave_main(filepath, ip, port, rpcport):
     sct = SlaveControllerThread(filepath, ip, port, rpcport)
     sct.start()
 
-    #Gdk.threads_init()
+    Gdk.threads_init()
+    GLib.threads_init()
     Gtk.main()
 
     sct.stop_player()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(prog='syneplayer',
+    parser = argparse.ArgumentParser(
+        prog='syneplayer',
         description='Start a syneplayer master or server')
-    parser.add_argument('-c', '--clock-port', type=int, default=20000,
+    parser.add_argument(
+        '-c', '--clock-port', type=int, default=20000,
         help='Specify the port for the netclock')
-    parser.add_argument('-r', '--rpc-port', type=int, default=8000,
-        help='Specify the port for the xmlrpcserver')                       
-    parser.add_argument('-i', '--master-ip', type=str, default='127.0.0.1',
+    parser.add_argument(
+        '-r', '--rpc-port', type=int, default=8000,
+        help='Specify the port for the xmlrpcserver')
+    parser.add_argument(
+        '-i', '--master-ip', type=str, default='127.0.0.1',
         help='Specify the ip of the master server for the slave to connect')
-    parser.add_argument('-f', '--file', type=str, required=True,
+    parser.add_argument(
+        '-f', '--file', type=str, required=True,
         help='Specify the full path of the file to be played')
-    parser.add_argument('type', choices=['master', 'slave'],
+    parser.add_argument(
+        'type', choices=['master', 'slave'],
         help="Specify if launch the master or the slave")
 
     args = parser.parse_args()

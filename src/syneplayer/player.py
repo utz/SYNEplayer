@@ -102,8 +102,8 @@ class Player(object):
 
 class MasterPlayer(Player):
     """
-        This class extends the basic Player creating a gst.NetTimeProvider to be
-        used by the slaves. Code here is taken from Andy Wingo examples.
+        This class extends the basic Player creating a gst.NetTimeProvider to
+        be used by the slaves. Code here is taken from Andy Wingo examples.
     """
     def __init__(self, filepath, port, window=None):
         super(MasterPlayer, self).__init__(filepath, window)
@@ -122,9 +122,9 @@ class MasterPlayer(Player):
 
 class SlavePlayer(Player):
     """
-        This class extends the basic player creating making it use a gst.NetClientClock
-        and setting a base_time taken from the Master. This creates a SlavePlayer that
-        is synchronized with the MasterPlayer.
+        This class extends the basic player creating making it use a
+        gst.NetClientClock and setting a base_time taken from the Master.
+        This creates a SlavePlayer that is synchronized with the MasterPlayer.
     """
     def __init__(self, filepath, ip, port, base_time, window=None):
         super(SlavePlayer, self).__init__(filepath, window)
@@ -142,23 +142,3 @@ class SlavePlayer(Player):
             'x', '127.0.0.1', 2000, base_time)
         self.pipeline.set_base_time(base_time)
         self.pipeline.use_clock(self.clock)
-
-
-if __name__ == '__main__':
-    """
-        This is a simple main meant to test the behaviour of SlavePlayer and MasterPlayer
-    """
-    if sys.argv[1] == 'test':
-        master = MasterPlayer('/home/phas/Downloads/A.ogg', 20000)
-        slave = SlavePlayer('127.0.0.1', 20000, master.base_time)
-        slave.pipeline.base_time = master.base_time
-    elif sys.argv[1] == 'master':
-        player = MasterPlayer(20000)
-        print("base_time={0}".format(player.base_time))
-    elif sys.argv[1] == 'slave':
-        slave = SlavePlayer(sys.argv[2], 20000, int(sys.argv[3]))
-        slave.pipeline.base_time = int(sys.argv[3])
-    elif sys.argv[1] == 'base':
-        player = Player('/home/phas/Downloads/A.ogg')
-
-    Gtk.main()
