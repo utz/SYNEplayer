@@ -46,6 +46,9 @@ from gi.repository import Gtk, Gdk, GLib
 
 from syneplayer import *
 
+import os
+import signal
+
 
 class MasterServer(object):
     """
@@ -115,10 +118,11 @@ class SlaveControllerThread(threading.Thread):
                         .format(self.ip, self.rpcport))
                 except Exception:
                     print("Master not ready")
-                    time.sleep(5)
+                    time.sleep(2)
 
             try:
                 base_time = int(self.master_server.get_base_time())
+                print(base_time)
             except Exception as e:
                 print(e)
                 print("Master not responding")
@@ -145,12 +149,7 @@ def master_main(filepath, ip, port, rpcport):
     mst = MasterServerThread(ms, ip, rpcport)
     mst.start()
 
-    Gdk.threads_init()
-    GLib.threads_init()
     Gtk.main()
-
-    mst.server.shutdown()
-    player.stop()
 
 
 def slave_main(filepath, ip, port, rpcport):
@@ -158,8 +157,6 @@ def slave_main(filepath, ip, port, rpcport):
     sct = SlaveControllerThread(filepath, ip, port, rpcport)
     sct.start()
 
-    Gdk.threads_init()
-    GLib.threads_init()
     Gtk.main()
 
     sct.stop_player()
@@ -185,6 +182,12 @@ if __name__ == '__main__':
         help="Specify if launch the master or the slave")
 
     args = parser.parse_args()
+
+    Gdk.threads_init()
+    GLib.threads_init()
+    GObject.threads_init()
+
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     if args.type == 'master':
         master_main(args.file, args.master_ip, args.clock_port, args.rpc_port)

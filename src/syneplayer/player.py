@@ -27,7 +27,6 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, Gtk, GObject, GstNet, GdkX11, GstVideo
 
-GObject.threads_init()
 Gst.init(None)
 
 from .window import PlayerWindow
@@ -67,6 +66,7 @@ class Player(object):
 
     def on_sync_message(self, bus, message):
         """Whe handle sync messages to put the video in a GTK DrawingArea"""
+        pass
         if message.get_structure().get_name() == 'prepare-window-handle':
             message.src.set_window_handle(self.window.movie_window
                                           .get_property('window').get_xid())
@@ -139,6 +139,11 @@ class SlavePlayer(Player):
         #Code here is taken from Andy Wingo examples.
         self.pipeline.set_start_time(Gst.CLOCK_TIME_NONE)
         self.clock = GstNet.NetClientClock.new(
-            'x', '127.0.0.1', 2000, base_time)
+            'x', self.ip, self.port, base_time)
         self.pipeline.set_base_time(base_time)
         self.pipeline.use_clock(self.clock)
+
+        self.pipeline.set_state(Gst.State.NULL)
+        self.pipeline.set_state(Gst.State.PAUSED)
+        #after setting to STATE_PAUSED the player is prerolling
+        self.prerolling = True
