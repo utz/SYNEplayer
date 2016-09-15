@@ -24,15 +24,15 @@ THE SOFTWARE.
 import sys
 
 import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst, Gtk, GObject
+gi.require_version("Gst", "1.0")
+gi.require_version("GstNet", "1.0")
+gi.require_version("GstVideo", "1.0")
+from gi.repository import Gst, GstNet, GstVideo, GLib, GObject
 
 GObject.threads_init()
 Gst.init(None)
 
 from .playerwindow import PlayerWindow
-
-from gi.repository import GdkX11, GstVideo
 
 
 class Player(object):
@@ -109,17 +109,18 @@ class Player(object):
 
 class MasterPlayer(Player):
     """
-        This class extends the basic Player creating a gst.NetTimeProvider to be
-        used by the slaves. Code here is taken from Andy Wingo examples.
+        This class extends the basic Player creating a GstNet.NetTimeProvider to be
+        used by the slaves. Code here is taken from Andy Wingo examples and updated
+        to Gstreamer 1.0.
     """
     def __init__(self, filepath, port, window=None):
         super(MasterPlayer, self).__init__(filepath, window)
 
-        self.clock = self.pipeline.get_clock()
+        self.clock = Gst.SystemClock.obtain()
         self.pipeline.use_clock(self.clock)
-        self.clock_provider = Gst.NetTimeProvider(self.clock, None, port)
+        self.clock_provider = GstNet.NetTimeProvider.new(self.clock, None, port)
         self.base_time = self.clock.get_time()
-        self.pipeline.set_new_stream_time(Gst.CLOCK_TIME_NONE)
+        ###self.pipeline.set_new_stream_time(Gst.CLOCK_TIME_NONE)
         self.pipeline.set_base_time(self.base_time)
 
     def get_base_time(self):
@@ -166,5 +167,5 @@ if __name__ == '__main__':
     elif sys.argv[1] == 'base':
         player = Player('/home/phas/Downloads/A.ogg')
 
-    #Gtk.gdk.threads_init()
-    Gtk.main()
+    GLib.threads_init()
+    GLib.main()
