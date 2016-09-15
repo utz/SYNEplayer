@@ -72,7 +72,7 @@ class Player(object):
     def get_pipeline(self, filepath):
         """A basic decodebin/autovideosink pipeline with no audio support"""
         return Gst.parse_launch('filesrc location={0} ! '.format(filepath)\
-            + 'decodebin ! glimagesink') ### autovideosink
+            + 'decodebin ! autovideosink')
 
     def on_sync_message(self, bus, message):
         """Whe handle sync messages to put the video in a GTK DrawingArea"""
