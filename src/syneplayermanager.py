@@ -35,12 +35,17 @@ THE SOFTWARE.
     master dies, the clients are meant to re-synchronize when it comes up again.
 """
 
+import gi
+
+gi.require_version('Gtk', "3.0")
 import threading
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
-import xmlrpclib
+from xmlrpc.client import ServerProxy
+
 import time
 import argparse
 
+from gi.repository import Gtk, GLib
 from syneplayer import *
 
 
@@ -99,16 +104,16 @@ class SlaveControllerThread(threading.Thread):
         while self.running:
             while self.master_server is None:
                 try:
-                    self.master_server = xmlrpclib.ServerProxy('http://{0}:{1}'
+                    self.master_server = ServerProxy('http://{0}:{1}'
                         .format(self.ip, self.rpcport))
-                except Exception:
-                    print("Master not ready")
+                except Exception as e:
+                    print("Master not ready", e)
                     time.sleep(5)
 
             try:
-                base_time = long(self.master_server.get_base_time())
-            except Exception:
-                print("Master not responding")
+                base_time = int(self.master_server.get_base_time())
+            except Exception as e:
+                print("Master not responding", e)
             else:
                 if self.slave is None:
                     self.slave = SlavePlayer(self.filepath, self.ip,
@@ -133,8 +138,8 @@ def master_main(filepath, ip, port, rpcport):
     mst = MasterServerThread(ms, ip, rpcport)
     mst.start()
 
-    gtk.gdk.threads_init()
-    gtk.main()
+    GLib.threads_init()
+    Gtk.main()
 
     mst.server.shutdown()
     player.stop()
@@ -142,11 +147,12 @@ def master_main(filepath, ip, port, rpcport):
 
 def slave_main(filepath, ip, port, rpcport):
     """Launches a slave"""
+    GLib.threads_init()
+
     sct = SlaveControllerThread(filepath, ip, port, rpcport)
     sct.start()
 
-    gtk.gdk.threads_init()
-    gtk.main()
+    Gtk.main()
 
     sct.stop_player()
 
